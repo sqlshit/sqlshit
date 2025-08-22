@@ -1,0 +1,57 @@
+#!/usr/bin/env sh
+SQLSHIT_VERSION=""
+SQLSHIT_COMMIT="27cd211"
+SQLSHIT_PLATFORM="macOS"
+# main entry (posix)
+
+# run from repo root in dev
+cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# dev defaults + banner
+if [ "${SHIT_DEV:-0}" = "1" ]; then
+  : "${SHIT_LOG:=debug}"; export SHIT_LOG
+  printf '%s\n' "🛠️  sqlshit dev mode enabled"
+  printf '%s\n' "    log level: ${SHIT_LOG}"
+  printf '%s\n' "    color: ${SHIT_COLOR:-auto}"
+fi
+
+# project env
+SHIT_ROOT="$(pwd)"; export SHIT_ROOT
+PATH="$SHIT_ROOT/src:$PATH"; export PATH
+
+# load modules (in dev these are files; in prod they’re already concatenated)
+# shellcheck disable=SC1091
+[ -f "$SHIT_ROOT/src/ui/ansi.sh" ]    && . "$SHIT_ROOT/src/ui/ansi.sh"
+[ -f "$SHIT_ROOT/src/ui/welcome.sh" ] && . "$SHIT_ROOT/src/ui/welcome.sh"
+
+_detect_platform() {
+  case "$(uname -s)" in
+    Darwin) printf 'macOS' ;;
+    Linux)  [ -f /etc/os-release ] && { . /etc/os-release; printf '%s' "${NAME:-Linux}"; } || printf 'Linux' ;;
+    *)      printf 'Unknown OS' ;;
+  esac
+}
+
+_show_version() {
+  plat="$(_detect_platform)"
+  if [ "${SHIT_DEV:-0}" = "1" ]; then
+    printf '%s\n' "sqlshit-${SHIT_VERSION:-0.0.0}-dev (${SHIT_COMMIT:-dirty}) for ${plat}"
+  else
+    printf '%s\n' "sqlshit-${SHIT_VERSION:-0.0.0} (${SHIT_COMMIT:-dirty}) for ${plat}"
+  fi
+}
+
+_show_help() {
+  printf '%s\n' "usage: sqlshit [--version] [--help]"
+  printf '%s\n' "       sqlshit (no args) -> welcome screen"
+}
+
+main() {
+  case "${1:-}" in
+    --version|-v) _show_version; exit 0 ;;
+    --help|-h|help) _show_help; exit 0 ;;
+    "") ansi_init; welcome_loop; exit 0 ;;
+    *) printf '%s\n' "error: unknown option $1"; exit 2 ;;
+  esac
+}
+main "$@"

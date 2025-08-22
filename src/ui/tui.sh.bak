@@ -1,0 +1,61 @@
+#!/usr/bin/env sh
+set -eu
+
+# run from repo root
+cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# default dev log level
+if [ "${SHIT_DEV:-0}" = "1" ]; then
+  : "${SHIT_LOG:=debug}"; export SHIT_LOG
+  printf '%s\n' "🛠️  sqlshit dev mode enabled"
+  printf '%s\n' "    log level: ${SHIT_LOG}"
+  printf '%s\n' "    color: ${SHIT_COLOR:-auto}"
+fi
+
+# project env
+SHIT_ROOT="$(pwd)"; export SHIT_ROOT
+PATH="$SHIT_ROOT/src:$PATH"; export PATH
+
+# libs
+[ -f "$SHIT_ROOT/src/lib/log.sh" ] && . "$SHIT_ROOT/src/lib/log.sh"
+[ -f "$SHIT_ROOT/src/lib/argparse.sh" ] && . "$SHIT_ROOT/src/lib/argparse.sh"
+. "$SHIT_ROOT/src/ui/ansi.sh"
+. "$SHIT_ROOT/src/tui.sh"
+
+_detect_platform() {
+  case "$(uname -s)" in
+    Darwin) printf 'macOS' ;;
+    Linux)  [ -f /etc/os-release ] && { . /etc/os-release; case "${ID:-}" in ubuntu) printf 'Ubuntu';; debian) printf 'Debian';; arch) printf 'Arch Linux';; alpine) printf 'Alpine';; *) printf 'Linux';; esac; } || printf 'Linux' ;;
+    *)      printf 'Unknown OS' ;;
+  esac
+}
+
+_show_version() {
+  v="$(cat VERSION 2>/dev/null || printf '0.0.0')"
+  c="$(git rev-parse --short HEAD 2>/dev/null || printf 'dirty')"
+  p="$(_detect_platform)"
+  if [ "${SHIT_DEV:-0}" = "1" ]; then
+    printf '%s\n' "sqlshit-${v}-dev (${c}) for ${p}"
+  else
+    printf '%s\n' "sqlshit-${v} (${c}) for ${p}"
+  fi
+}
+
+_show_help() {
+  printf '%s\n' "usage: sqlshit [--version] [--help]"
+  printf '%s\n' "       sqlshit (no args) -> interactive mode"
+}
+
+# future: shared operations usable by cron and tui
+# shit_backup_run() { :; }  # implement in src/ops/backup.sh later
+
+main() {
+  case "${1:-}" in
+    --version|-v) _show_version; exit 0 ;;
+    --help|-h|help) _show_help; exit 0 ;;
+    --interactive) ansi_init; tui_loop; exit 0 ;;
+    "")            ansi_init; tui_loop; exit 0 ;;   # default to TUI
+    *)             printf '%s\n' "error: not implemented yet"; exit 2 ;;
+  esac
+}
+main "$@"

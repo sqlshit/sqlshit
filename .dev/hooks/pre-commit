@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+# bump build (patch) on master, then build and stage
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+[ "$branch" = "master" ] || exit 0
+
+# only run if relevant files are staged
+if ! git diff --cached --name-only | grep -Eq '^(src/|build\.sh|VERSION)'; then
+  exit 0
+fi
+
+ver="$(tr -d '\n' < VERSION)"
+IFS='.' read -r major minor build <<EOF
+$ver
+EOF
+: "${major:=0}"; : "${minor:=0}"; : "${build:=0}"
+new_version="${major}.${minor}.$((build+1))"
+printf '%s\n' "$new_version" > VERSION
+
+[ -x ./build.sh ] && ./build.sh
+
+git add VERSION
+[ -f dist/sqlshit ] && git add dist/sqlshit
+
+exit 0

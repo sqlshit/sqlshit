@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+set -eu
+
+# dev launcher: run src/main.sh with dev flags (no build)
+
+export SHIT_DEV=1
+# default dev log level to debug unless caller set it
+export SHIT_LOG="${SHIT_LOG:-debug}"
+export SHIT_COLOR="${SHIT_COLOR:-auto}"
+
+# normalize to repo root
+cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# require dev entry
+if [ ! -f "src/main.sh" ]; then
+  printf '%s\n' "error: src/main.sh missing. create it or run ./build.sh first."
+  exit 1
+fi
+
+chmod +x src/main.sh
+exec ./src/main.sh "$@"

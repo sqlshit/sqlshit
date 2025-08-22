@@ -1,0 +1,66 @@
+#!/usr/bin/env sh
+set -eu
+
+# run from repo root
+cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# banner in dev
+if [ "${SHIT_DEV:-0}" = "1" ]; then
+  printf '%s\n' "🛠️  sqlshit dev mode enabled"
+  printf '%s\n' "    log level: ${SHIT_LOG:-info}"
+  printf '%s\n' "    color: ${SHIT_COLOR:-auto}"
+fi
+
+# optional libs (safe if missing)
+SHIT_ROOT="$(pwd)"; export SHIT_ROOT
+PATH="$SHIT_ROOT/src:$PATH"; export PATH
+[ -f "$SHIT_ROOT/src/lib/log.sh" ] && . "$SHIT_ROOT/src/lib/log.sh"
+[ -f "$SHIT_ROOT/src/lib/argparse.sh" ] && . "$SHIT_ROOT/src/lib/argparse.sh"
+
+_detect_platform() {
+  case "$(uname -s)" in
+    Darwin) printf 'macOS' ;;
+    Linux)
+      if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "${ID:-}" in
+          ubuntu) printf 'Ubuntu' ;;
+          debian) printf 'Debian' ;;
+          arch)   printf 'Arch Linux' ;;
+          alpine) printf 'Alpine' ;;
+          *)      printf 'Linux' ;;
+        esac
+      else
+        printf 'Linux'
+      fi
+      ;;
+    *) printf 'Unknown OS' ;;
+  esac
+}
+
+_show_version() {
+  if [ -f VERSION ]; then
+    v="$(cat VERSION)"
+    c="$(git rev-parse --short HEAD 2>/dev/null || printf 'dirty')"
+    p="$(_detect_platform)"
+    if [ "${SHIT_DEV:-0}" = "1" ]; then
+      printf '%s\n' "sqlshit-${v}-dev (${c}) for ${p}"
+    else
+      printf '%s\n' "sqlshit-${v} (${c}) for ${p}"
+    fi
+  else
+    printf '%s\n' "sqlshit (version unknown)"
+  fi
+}
+
+_show_help() { printf '%s\n' "usage: sqlshit [--version] [--help]"; }
+
+main() {
+  case "${1:-}" in
+    --version|-v) _show_version; exit 0 ;;
+    --help|-h|help) _show_help; exit 0 ;;
+    "") _show_help; exit 0 ;;
+    *) printf '%s\n' "error: not implemented yet"; exit 2 ;;
+  esac
+}
+main "$@"
