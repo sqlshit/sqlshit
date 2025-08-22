@@ -1,7 +1,81 @@
 #!/usr/bin/env sh
-SQLSHIT_VERSION=""
-SQLSHIT_COMMIT="27cd211"
-SQLSHIT_PLATFORM="macOS"
+set -eu
+SQLSHIT_VERSION='0.0.3'
+SQLSHIT_DEV=0
+
+# ansi/tput helpers (posix)
+
+ansi_init() {
+  if command -v tput >/dev/null 2>&1; then
+    cols="$(tput cols 2>/dev/null || printf '80')"
+    lines="$(tput lines 2>/dev/null || printf '24')"
+    clear="$(tput clear 2>/dev/null || printf '\033[2J\033[H')"
+    bold="$(tput bold 2>/dev/null || printf '')"
+    sgr0="$(tput sgr0 2>/dev/null || printf '\033[0m')"
+  else
+    cols="80"; lines="24"
+    clear="$(printf '\033[2J\033[H')"
+    bold=""; sgr0=""
+  fi
+  UI_COLS="$cols"; UI_LINES="$lines"; UI_CLEAR="$clear"; UI_BOLD="$bold"; UI_SGR0="$sgr0"
+}
+
+ansi_cls()   { printf '%s' "${UI_CLEAR:-$(printf '\033[2J\033[H')}"; }
+ansi_goto()  { printf '\033[%s;%sH' "$1" "$2"; }  # row col (1-based)
+ansi_bold()  { printf '%s' "${UI_BOLD:-}"; }
+ansi_reset() { printf '%s' "${UI_SGR0:-}"; }
+# simple welcome screen; press q to exit
+
+_w_platform() {
+  case "$(uname -s)" in
+    Darwin) printf 'macOS' ;;
+    Linux)
+      if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        printf '%s' "${NAME:-Linux}"
+      else
+        printf 'Linux'
+      fi
+      ;;
+    *) printf 'Unknown OS' ;;
+  esac
+}
+
+_w_title() {
+  plat="$(_w_platform)"
+  # SQLSHIT_VERSION already includes -dev when running via ./sqlshit
+  printf 'sqlshit-%s for %s' "${SQLSHIT_VERSION:-0.0.0}" "$plat"
+}
+
+welcome_draw() {
+  ansi_cls
+  ansi_goto 1 2; ansi_bold; printf '%s' "$(_w_title)"; ansi_reset
+  ansi_goto 3 2; ansi_bold; printf 'welcome to sqlshit'; ansi_reset
+  ansi_goto 5 2; printf 'press q to exit.'
+}
+
+welcome_loop() {
+  if command -v stty >/dev/null 2>&1; then
+    STTY_OLD="$(stty -g)"
+    trap 'stty "$STTY_OLD" >/dev/null 2>&1 || true; ansi_reset; printf "\n"; exit 0' INT TERM EXIT
+    stty -echo -icanon time 0 min 0 2>/dev/null || true
+  fi
+
+  while :; do
+    ansi_init
+    welcome_draw
+    key=''
+    IFS= read -r -n 1 key 2>/dev/null || true
+    [ "$key" = "q" ] && break
+    sleep 0.1
+  done
+
+  if [ -n "${STTY_OLD:-}" ]; then
+    stty "$STTY_OLD" >/dev/null 2>&1 || true
+  fi
+  ansi_reset
+  printf '\n'
+}
 # main entry (posix)
 
 # run from repo root in dev
@@ -20,7 +94,6 @@ SHIT_ROOT="$(pwd)"; export SHIT_ROOT
 PATH="$SHIT_ROOT/src:$PATH"; export PATH
 
 # load modules (in dev these are files; in prod they’re already concatenated)
-# shellcheck disable=SC1091
 [ -f "$SHIT_ROOT/src/ui/ansi.sh" ]    && . "$SHIT_ROOT/src/ui/ansi.sh"
 [ -f "$SHIT_ROOT/src/ui/welcome.sh" ] && . "$SHIT_ROOT/src/ui/welcome.sh"
 
@@ -34,11 +107,7 @@ _detect_platform() {
 
 _show_version() {
   plat="$(_detect_platform)"
-  if [ "${SHIT_DEV:-0}" = "1" ]; then
-    printf '%s\n' "sqlshit-${SHIT_VERSION:-0.0.0}-dev (${SHIT_COMMIT:-dirty}) for ${plat}"
-  else
-    printf '%s\n' "sqlshit-${SHIT_VERSION:-0.0.0} (${SHIT_COMMIT:-dirty}) for ${plat}"
-  fi
+  printf '%s\n' "sqlshit-${SQLSHIT_VERSION:-0.0.0} for ${plat}"
 }
 
 _show_help() {

@@ -17,11 +17,8 @@ _w_platform() {
 
 _w_title() {
   plat="$(_w_platform)"
-  if [ "${SHIT_DEV:-0}" = "1" ]; then
-    printf 'sqlshit-%s-dev (%s) for %s' "${SHIT_VERSION:-0.0.0}" "${SHIT_COMMIT:-dirty}" "$plat"
-  else
-    printf 'sqlshit-%s (%s) for %s' "${SHIT_VERSION:-0.0.0}" "${SHIT_COMMIT:-dirty}" "$plat"
-  fi
+  # SQLSHIT_VERSION already includes -dev when running via ./sqlshit
+  printf 'sqlshit-%s for %s' "${SQLSHIT_VERSION:-0.0.0}" "$plat"
 }
 
 welcome_draw() {

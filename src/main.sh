@@ -16,7 +16,6 @@ SHIT_ROOT="$(pwd)"; export SHIT_ROOT
 PATH="$SHIT_ROOT/src:$PATH"; export PATH
 
 # load modules (in dev these are files; in prod they’re already concatenated)
-# shellcheck disable=SC1091
 [ -f "$SHIT_ROOT/src/ui/ansi.sh" ]    && . "$SHIT_ROOT/src/ui/ansi.sh"
 [ -f "$SHIT_ROOT/src/ui/welcome.sh" ] && . "$SHIT_ROOT/src/ui/welcome.sh"
 
@@ -30,11 +29,7 @@ _detect_platform() {
 
 _show_version() {
   plat="$(_detect_platform)"
-  if [ "${SHIT_DEV:-0}" = "1" ]; then
-    printf '%s\n' "sqlshit-${SHIT_VERSION:-0.0.0}-dev (${SHIT_COMMIT:-dirty}) for ${plat}"
-  else
-    printf '%s\n' "sqlshit-${SHIT_VERSION:-0.0.0} (${SHIT_COMMIT:-dirty}) for ${plat}"
-  fi
+  printf '%s\n' "sqlshit-${SQLSHIT_VERSION:-0.0.0} for ${plat}"
 }
 
 _show_help() {
